@@ -8,6 +8,7 @@ import cffi
 
 from data_for_test import MatrixVector
 from logs.logging_setup import setup_logging
+from matrix_operations import *
 from parser_header import parser_header
 
 count_valid_test = 0
@@ -53,7 +54,7 @@ class MatrixTestCase(unittest.TestCase):
 
         cls.m = MatrixVector()
 
-        cls.delta = 0
+        cls.delta = 1e-10
         cls.count_all_test = 15
 
     @classmethod
@@ -239,13 +240,7 @@ class MatrixTestCase(unittest.TestCase):
                 self.lib.MultWideMatrMatr(len(matrix1), len(matrix2[0]), len(matrix2), arr_var1, arr_var2, res)
 
                 # Создаем пустую матрицу для результата
-                expected_result = [[0 for _ in range(len(matrix2[0]))] for _ in range(len(matrix1))]
-
-                # Выполняем перемножение матриц
-                for i1 in range(len(matrix1)):
-                    for j1 in range(len(matrix2[0])):
-                        for k1 in range(len(matrix2)):
-                            expected_result[i1][j1] += matrix1[i1][k1] * matrix2[k1][j1]
+                expected_result = multiply_matrices(matrix1, matrix2)
 
                 for k1 in range(len(matrix1)):
                     for k2 in range(len(matrix1[0])):
@@ -271,12 +266,7 @@ class MatrixTestCase(unittest.TestCase):
                 self.lib.MultWideMatrVect(len(matrix), len(matrix[0]), arr_matr, arr_vec, res)
 
                 # Создаем пустой вектор для результата
-                expected_result = [0 for _ in range(len(matrix))]
-
-                # Выполняем умножение матрицы на вектор
-                for i1 in range(len(matrix)):
-                    for j1 in range(len(vector)):
-                        expected_result[i1] += matrix[i1][j1] * vector[j1]
+                expected_result = multiply_matrices_vector(matrix, vector)
 
                 for k1 in range(len(vector)):
                     self.assertAlmostEqual(res[k1], expected_result[k1], delta=self.delta)
@@ -298,12 +288,7 @@ class MatrixTestCase(unittest.TestCase):
                 self.lib.MultWideMatrScal(len(matrix), len(matrix[0]), arr_matr, j, res)
 
                 # Создаем пустую матрицу для результата
-                expected_result = [[0 for _ in range(len(matrix[0]))] for _ in range(len(matrix))]
-
-                # Выполняем умножение матрицы на вектор
-                for i1 in range(len(matrix)):
-                    for j1 in range(len(matrix[0])):
-                        expected_result[i1][j1] = matrix[i1][j1] * j
+                expected_result = multiply_matrices_digit(matrix, j)
 
                 for k1 in range(len(matrix)):
                     for k2 in range(len(matrix[0])):
@@ -347,11 +332,7 @@ class MatrixTestCase(unittest.TestCase):
 
             self.lib.TransposeWide(len(matrix), len(matrix[0]), arr_matr, res)
 
-            expected_result = [[0 for _ in range(len(matrix[0]))] for _ in range(len(matrix))]
-
-            for i1 in range(len(expected_result)):
-                for j1 in range(len(expected_result[0])):
-                        expected_result[i1][j1] = matrix[j1][i1]
+            expected_result = transpose(matrix)
 
             for k1 in range(len(matrix)):
                 for k2 in range(len(matrix[0])):
@@ -363,6 +344,54 @@ class MatrixTestCase(unittest.TestCase):
 
     def test_SimilarityWide(self):
         """Тест для Similarity Wide"""
+
+        global count_valid_test
+        for i in self.m.BASE_MATRIX_NAMES:
+            matrix1 = self.m.gen(i)
+            arr_matr1 = self.ffi.new('TWideMatrix', matrix1)
+
+            for j in self.m.BASE_MATRIX_NAMES:
+                matrix2 = self.m.gen(j)
+                arr_matr2 = self.ffi.new('TWideMatrix', matrix2)
+                res = self.ffi.new('TWideMatrix', self.m.gen(f"matrix_{len(matrix1)}_{len(matrix1[0])}_zero"))
+
+                self.lib.SimilarityWide(len(matrix1), len(matrix1[0]), arr_matr1, arr_matr2, res)
+
+                # Перемножение матриц
+                temp1 = multiply_matrices(matrix1, matrix2)
+                # Транспонирование матрицы
+                temp2 = transpose(matrix1)
+                # Перемножение матриц
+                expected_result = multiply_matrices(temp1, temp2)
+
+                for k1 in range(len(expected_result)):
+                    for k2 in range(len(expected_result[0])):
+                        self.assertAlmostEqual(res[k1][k2], expected_result[k1][k2], delta=self.delta)
+
+        logging.info("Тесты для SimilarityWide успешно пройдены")
+        count_valid_test += 1
+        logging.info(f"Тестов успешно пройдено: {count_valid_test} / {self.count_all_test}")
+
+    def test_InverseWide(self):
+        """Тест для обратной матрицы"""
+
+        global count_valid_test
+        for _ in range(5):
+            matrix = self.m.gen("matrix_8_8_rand")
+            arr_matr = self.ffi.new('TWideMatrix', matrix)
+            res = self.ffi.new('TWideMatrix', self.m.gen(f"matrix_{len(matrix)}_{len(matrix[0])}_zero"))
+
+            self.lib.InverseWide(len(matrix), arr_matr, res)
+
+            expected_result = inverse_matrix(matrix)
+
+            for k1 in range(len(matrix)):
+                for k2 in range(len(matrix[0])):
+                    self.assertAlmostEqual(res[k1][k2], expected_result[k1][k2], delta=self.delta)
+
+        logging.info("Тесты для InverseWide (обратная матрица) успешно пройдены")
+        count_valid_test += 1
+        logging.info(f"Тестов успешно пройдено: {count_valid_test} / {self.count_all_test}")
 
 
 
