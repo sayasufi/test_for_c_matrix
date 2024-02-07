@@ -2,11 +2,10 @@ import logging
 import math
 import subprocess
 import unittest
-from ctypes import *
 
 import cffi
 
-from data_for_test import data_gen
+from data_for_test import MatrixVector
 from logs.logging_setup import setup_logging
 from parser_header import parser_header
 
@@ -25,6 +24,8 @@ def compile_to_shared_object(source_file_in, output_file_in):
 
 class MatrixTestCase(unittest.TestCase):
     """Класс тестов"""
+
+    ffi = None
 
     @classmethod
     def setUpClass(cls):
@@ -47,7 +48,7 @@ class MatrixTestCase(unittest.TestCase):
         logging.info(f"Файл {output_file} успешно загружен")
         cls.ffi.cdef(parser_header(header_file))
 
-        cls.data = data_gen()
+        cls.m = MatrixVector()
 
     @classmethod
     def tearDownClass(cls):

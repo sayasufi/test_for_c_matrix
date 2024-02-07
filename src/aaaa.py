@@ -1,7 +1,10 @@
 #! /usr/bin/env python3
 from math import sqrt
-from parser_header import parser_header
+
 import cffi
+
+from parser_header import parser_header
+
 
 def main():
     ffi = cffi.FFI()
@@ -13,8 +16,7 @@ def main():
     arr_var = ffi.new('double[]', lst)
     print(arr_var, type(arr_var))
     res = lib.AbsWideVect(len_lst, arr_var)
-    print(f"Sum of {lst} is {res}", sqrt(sum(map(lambda x: x**2, lst))))
-
+    print(f"Sum of {lst} is {res}", sqrt(sum(map(lambda x: x ** 2, lst))))
 
 
 if __name__ == "__main__":
