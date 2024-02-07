@@ -2,7 +2,7 @@ import re
 
 
 def starts_with_space_or_hash(string: str) -> bool:
-    """Фильтр для хедэров"""
+    """Фильтр для хедеров"""
     if string.startswith("\n") or string.startswith("#"):
         return False
     return True

@@ -1,75 +1,93 @@
+import logging
+import random
+
+
 class MatrixVector:
     def __init__(self):
-        self.matrices = {}
-        self.vectors = {}
+        self.name = None
+        self.valid_names = (
+            "rand",
+            "range",
+            "one",
+            "zero"
+        )
 
-    def set_matrix(self, name, matrix):
-        rows = len(matrix)
-        cols = len(matrix[0])
-        self.matrices[name] = {"rows": rows, "cols": cols, "matrix": matrix}
-
-    def set_vector(self, name, vector):
-        cols = len(vector)
-        self.vectors[name] = {"cols": cols, "vector": vector}
-
-    def get_matrix(self, name):
-        if name in self.matrices:
-            return self.matrices[name]["matrix"]
+    def gen(self, name: str):
+        self.name = name
+        lst = self.name.split("_")
+        if lst[0] not in ("vector", "matrix"):
+            logging.warning("Неверное имя, оно должно начинаться с (vector, matrix)")
+            raise ValueError("Неверное имя")
+        elif lst[0] == "vector":
+            return self.__get_vector()
         else:
-            raise ValueError("Matrix not found")
+            return self.__get_matrix()
 
-    def get_vector(self, name):
-        if name in self.vectors:
-            return self.vectors[name]["vector"]
+    def __get_matrix(self):
+        if not self.__valid_name_matrix():
+            raise ValueError("Неверное имя вектора")
+        lst = self.name.split("_")
+        if lst[3] == "one":
+            return [[1] * int(lst[1]) for _ in range(int(lst[2]))]
+        if lst[3] == "zero":
+            return [[0] * int(lst[1]) for _ in range(int(lst[2]))]
+        if lst[3] == "range":
+            val = [[0] * int(lst[1]) for _ in range(int(lst[2]))]
+            for i in range(int(lst[2])):
+                for j in range(int(lst[1])):
+                    val[i][j] = i * int(lst[1]) + j + 1
+            return val
+
         else:
-            raise ValueError("Vector not found")
+            val = [[0] * int(lst[1]) for _ in range(int(lst[2]))]
+            for i in range(int(lst[2])):
+                for j in range(int(lst[1])):
+                    val[i][j] = random.random() * 1000
+            return val
 
+    def __get_vector(self):
+        if not self.__valid_name_vector():
+            raise ValueError("Неверное имя вектора")
+        lst = self.name.split("_")
+        if lst[2] == "one":
+            return [1] * int(lst[1])
+        if lst[2] == "zero":
+            return [0] * int(lst[1])
+        if lst[2] == "range":
+            return list(range(1, int(lst[1]) + 1))
+        else:
+            val = [0] * int(lst[1])
+            for i in range(int(lst[1])):
+                val[i] = random.random() * 1000
+            return val
 
-def data_gen():
-    # Пример использования
-    m = MatrixVector()
-    m.set_matrix(
-        "matrix8",
-        [
-            [1, 2, 3, 4, 5, 6, 7, 8],
-            [9, 10, 11, 12, 13, 14, 15, 16],
-            [17, 18, 19, 20, 21, 22, 23, 24],
-            [25, 26, 27, 28, 29, 30, 31, 32],
-            [33, 34, 35, 36, 37, 38, 39, 40],
-            [41, 42, 43, 44, 45, 46, 47, 48],
-            [49, 50, 51, 52, 53, 54, 55, 56],
-            [57, 58, 59, 60, 61, 62, 63, 64],
-        ],
-    )
-    m.set_matrix(
-        "matrix_zero",
-        [
-            [0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0],
-        ],
-    )
-    m.set_matrix(
-        "matrix_one",
-        [
-            [1, 1, 1, 1, 1, 1, 1, 1],
-            [1, 1, 1, 1, 1, 1, 1, 1],
-            [1, 1, 1, 1, 1, 1, 1, 1],
-            [1, 1, 1, 1, 1, 1, 1, 1],
-            [1, 1, 1, 1, 1, 1, 1, 1],
-            [1, 1, 1, 1, 1, 1, 1, 1],
-            [1, 1, 1, 1, 1, 1, 1, 1],
-            [1, 1, 1, 1, 1, 1, 1, 1],
-        ],
-    )
-    m.set_vector("vector8", [1, 2, 3, 4, 5, 6, 7, 8])
-    m.set_vector("vector_zero", [0, 0, 0, 0, 0, 0, 0, 0])
-    m.set_vector("vector_one", [1, 1, 1, 1, 1, 1, 1, 1])
-    return m
+    def __valid_name_vector(self) -> bool:
+        lst = self.name.split("_")
+        if len(lst) != 3:
+            logging.warning("Неверное имя вектора, необходимо указать 2 атрибута через _")
+            return False
+        if not (lst[1].isdigit() and 1 <= int(lst[1]) <= 8):
+            logging.warning("Неверное имя вектора, первый аргумент должен лежать в пределах от 1 до 8")
+            return False
+        if lst[2] not in self.valid_names:
+            logging.warning(
+                f"Неверное имя вектора, второй аргумент должен быть выбран из данного списка {self.valid_names}")
+            return False
+        return True
 
-
+    def __valid_name_matrix(self) -> bool:
+        lst = self.name.split("_")
+        if len(lst) != 4:
+            logging.warning("Неверное имя вектора, необходимо указать 3 атрибута через _")
+            return False
+        if not (lst[1].isdigit() and 1 <= int(lst[1]) <= 8):
+            logging.warning("Неверное имя вектора, первый аргумент должен лежать в пределах от 1 до 8")
+            return False
+        if not (lst[2].isdigit() and 1 <= int(lst[2]) <= 8):
+            logging.warning("Неверное имя вектора, второй аргумент должен лежать в пределах от 1 до 8")
+            return False
+        if lst[3] not in self.valid_names:
+            logging.warning(
+                f"Неверное имя вектора, второй аргумент должен быть выбран из данного списка {self.valid_names}")
+            return False
+        return True
