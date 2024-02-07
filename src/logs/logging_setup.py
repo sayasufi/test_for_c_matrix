@@ -6,7 +6,7 @@ def setup_logging(log_file: str = "cache.log", stdout_logging: bool = False):
     """Создаем функцию инициализирующую логгер"""
 
     # Очистка файла логов если в нем больше 1000 строк
-    with open(log_file, "w+") as file:
+    with open(log_file, "r") as file:
         if len(file.readlines()) > 1000:
             os.system(r'cat /dev/null>{}'.format(log_file))
 

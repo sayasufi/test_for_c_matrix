@@ -1,5 +1,6 @@
 import logging
 import math
+import os
 import subprocess
 import unittest
 
@@ -8,6 +9,8 @@ import cffi
 from data_for_test import MatrixVector
 from logs.logging_setup import setup_logging
 from parser_header import parser_header
+
+count_valid_test = 0
 
 
 def compile_to_shared_object(source_file_in, output_file_in):
@@ -50,81 +53,317 @@ class MatrixTestCase(unittest.TestCase):
 
         cls.m = MatrixVector()
 
+        cls.delta = 0
+        cls.count_all_test = 15
+
     @classmethod
     def tearDownClass(cls):
         """Функция удаления временного файла .so"""
 
-        # os.remove("c_code/matrix.so")
+        os.remove("c_code/matrix.so")
         logging.info("Временные файлы удалены")
 
-    # def test_CopyWideMatr(self):
-    #     """Копирование матрицы"""
-    #     CopyWideMatr = self.matrix_lib.CopyWideMatr
-    #     CopyWideMatr.argtypes = [
-    #         c_short,
-    #         c_short,
-    #         self.TWideMatrix,
-    #         self.TWideMatrix,
-    #     ]
-    #     for name in self.data.matrices:
-    #         matrix_python = self.data.get_matrix(name)
-    #         # Создание исходной и целевой матрицы
-    #         C_from = self.TWideMatrix()
-    #         C_to = self.TWideMatrix()
-    #
-    #         n = self.data.matrices[name]["rows"]
-    #         m = self.data.matrices[name]["cols"]
-    #
-    #         for i in range(n):
-    #             for j in range(m):
-    #                 C_from[i][j] = matrix_python[i][j]
-    #
-    #         # Копирование матрицы
-    #         CopyWideMatr(n, m, C_from, C_to)
-    #
-    #         # Проверка, что матрицы равны
-    #         for i in range(n):
-    #             for j in range(m):
-    #                 self.assertEqual(C_to[i][j], C_from[i][j])
-    #                 self.assertEqual(C_to[i][j], matrix_python[i][j])
+    def test_CopyWideMatr(self):
+        """Копирование матрицы"""
+
+        global count_valid_test
+        for i in self.m.BASE_MATRIX_NAMES:
+            matrix = self.m.gen(i)
+            arr_var = self.ffi.new('TWideMatrix', matrix)
+            res = self.ffi.new('TWideMatrix', self.m.gen(f"matrix_{len(matrix)}_{len(matrix[0])}_zero"))
+            self.lib.CopyWideMatr(len(matrix), len(matrix[0]), arr_var, res)
+
+            # Проверка, что матрицы равны
+            for i in range(len(matrix)):
+                for j in range(len(matrix[0])):
+                    self.assertAlmostEqual(res[i][j], arr_var[i][j], delta=self.delta)
+                    self.assertAlmostEqual(res[i][j], matrix[i][j], delta=self.delta)
+
+        logging.info("Тесты для CopyWideMatr (копирование матрицы) успешно пройдены")
+        count_valid_test += 1
+        logging.info(f"Тестов успешно пройдено: {count_valid_test} / {self.count_all_test}")
 
     def test_AbsWideVect(self):
         """Модуль вектора"""
 
-        lst = list(range(8))
-        len_lst = len(lst)
-        arr_var = self.ffi.new('double[]', lst)
-        print(arr_var, type(arr_var))
-        res = self.lib.AbsWideVect(len_lst, arr_var)
-        print(f"Sum of {lst} is {res}")
-        expected_result = math.sqrt(sum(map(lambda x: x ** 2, lst)))
+        global count_valid_test
+        for i in self.m.BASE_VECTOR_NAMES:
+            vector = self.m.gen(i)
+            arr_var = self.ffi.new('TWideVector', vector)
+            res = self.lib.AbsWideVect(len(vector), arr_var)
+            expected_result = math.sqrt(sum(map(lambda x: x ** 2, vector)))
 
-        # Проверка, что результат соответствует ожидаемому значению
-        self.assertAlmostEqual(res, expected_result, delta=0.0001)
+            # Проверка, что результат соответствует ожидаемому значению
+            self.assertAlmostEqual(res, expected_result, delta=self.delta)
 
-    # def test_AddWideVect(self):
-    #     """Сложение двух векторов"""
-    #     AddWideVect = self.matrix_lib.AddWideVect
-    #     AddWideVect.argtypes = [
-    #         c_short,
-    #         self.TWideVector,
-    #         self.TWideVector,
-    #         self.TWideVector,
-    #     ]
-    #
-    #
-    #     a1 = self.TWideVector(*slot1)
-    #     a2 = self.TWideVector(*slot2)
-    #     a = self.TWideVector()
-    #
-    #     expected_result = [0] * 8
-    #     for i in range(8):
-    #         expected_result[i] = a1[i] + a2[i]
-    #
-    #     AddWideVect(8, a1, a2, a)
-    #
-    #     for i in range(8):
-    #         self.assertEqual(a[i], expected_result[i])
+        logging.info("Тесты для AbsWideVect (модуль вектора) успешно пройдены")
+        count_valid_test += 1
+        logging.info(f"Тестов успешно пройдено: {count_valid_test} / {self.count_all_test}")
+
+    def test_AddWideVect(self):
+        """Сложение двух векторов"""
+
+        global count_valid_test
+        for i in self.m.BASE_VECTOR_NAMES:
+            vector1 = self.m.gen(i)
+            arr_var1 = self.ffi.new('TWideVector', vector1)
+
+            for j in self.m.BASE_VECTOR_NAMES:
+                vector2 = self.m.gen(j)
+                arr_var2 = self.ffi.new('TWideVector', vector2)
+                res = self.ffi.new('TWideVector', self.m.gen(f"vector_{len(vector2)}_zero"))
+                self.lib.AddWideVect(len(vector2), arr_var1, arr_var2, res)
+
+                expected_result = [x + y for x, y in zip(vector1, vector2)]
+
+                for k in range(len(expected_result)):
+                    self.assertAlmostEqual(res[k], expected_result[k], delta=self.delta)
+
+        logging.info("Тесты для AddWideVect (сложение векторов) успешно пройдены")
+        count_valid_test += 1
+        logging.info(f"Тестов успешно пройдено: {count_valid_test} / {self.count_all_test}")
+
+    def test_SubWideVect(self):
+        """Вычитание двух векторов"""
+
+        global count_valid_test
+        for i in self.m.BASE_VECTOR_NAMES:
+            vector1 = self.m.gen(i)
+            arr_var1 = self.ffi.new('TWideVector', vector1)
+
+            for j in self.m.BASE_VECTOR_NAMES:
+                vector2 = self.m.gen(j)
+                arr_var2 = self.ffi.new('TWideVector', vector2)
+                res = self.ffi.new('TWideVector', self.m.gen(f"vector_{len(vector2)}_zero"))
+                self.lib.SubWideVect(len(vector2), arr_var1, arr_var2, res)
+
+                expected_result = [x - y for x, y in zip(vector1, vector2)]
+
+                for k in range(len(expected_result)):
+                    self.assertAlmostEqual(res[k], expected_result[k], delta=self.delta)
+
+        logging.info("Тесты для SubWideVect (вычитание векторов) успешно пройдены")
+        count_valid_test += 1
+        logging.info(f"Тестов успешно пройдено: {count_valid_test} / {self.count_all_test}")
+
+    def test_MultWideVectScal(self):
+        """Умножение вектора на число"""
+
+        global count_valid_test
+        for i in self.m.BASE_VECTOR_NAMES:
+            vector = self.m.gen(i)
+            arr_var = self.ffi.new('TWideVector', vector)
+            res = self.ffi.new('TWideVector', self.m.gen(f"vector_{len(vector)}_zero"))
+
+            for j in [0, 1, -1, 13, 1.25]:
+                self.lib.MultWideVectScal(len(vector), arr_var, j, res)
+                expected_result = list(map(lambda x: x * j, vector))
+
+                for k in range(len(expected_result)):
+                    # Проверка, что результат соответствует ожидаемому значению
+                    self.assertAlmostEqual(res[k], expected_result[k], delta=self.delta)
+
+        logging.info("Тесты для MultWideVectScal (умножение вектора на число) успешно пройдены")
+        count_valid_test += 1
+        logging.info(f"Тестов успешно пройдено: {count_valid_test} / {self.count_all_test}")
+
+    def test_AddWideMatr(self):
+        """Сложение двух матриц"""
+
+        global count_valid_test
+        for i in self.m.BASE_MATRIX_NAMES:
+            matrix1 = self.m.gen(i)
+            arr_var1 = self.ffi.new('TWideMatrix', matrix1)
+
+            for j in self.m.BASE_MATRIX_NAMES:
+                matrix2 = self.m.gen(j)
+                arr_var2 = self.ffi.new('TWideMatrix', matrix2)
+                res = self.ffi.new('TWideMatrix', self.m.gen(f"matrix_{len(matrix2)}_{len(matrix2[0])}_zero"))
+
+                self.lib.AddWideMatr(len(matrix2), len(matrix2[0]), arr_var1, arr_var2, res)
+
+                expected_result = [[0] * len(matrix2[0]) for _ in range(len(matrix2))]
+                for k1 in range(len(matrix1)):
+                    for k2 in range(len(matrix1[k1])):
+                        expected_result[k1][k2] = matrix1[k1][k2] + matrix2[k1][k2]
+
+                for k1 in range(len(matrix1)):
+                    for k2 in range(len(matrix1[k1])):
+                        self.assertAlmostEqual(res[k1][k2], expected_result[k1][k2], delta=self.delta)
+
+        logging.info("Тесты для AddWideMatr (сложение матриц) успешно пройдены")
+        count_valid_test += 1
+        logging.info(f"Тестов успешно пройдено: {count_valid_test} / {self.count_all_test}")
+
+    def test_SubWideMatr(self):
+        """Вычитание двух матриц"""
+
+        global count_valid_test
+        for i in self.m.BASE_MATRIX_NAMES:
+            matrix1 = self.m.gen(i)
+            arr_var1 = self.ffi.new('TWideMatrix', matrix1)
+
+            for j in self.m.BASE_MATRIX_NAMES:
+                matrix2 = self.m.gen(j)
+                arr_var2 = self.ffi.new('TWideMatrix', matrix2)
+                res = self.ffi.new('TWideMatrix', self.m.gen(f"matrix_{len(matrix2)}_{len(matrix2[0])}_zero"))
+
+                self.lib.SubWideMatr(len(matrix2), len(matrix2[0]), arr_var1, arr_var2, res)
+
+                expected_result = [[0] * len(matrix2[0]) for _ in range(len(matrix2))]
+                for k1 in range(len(matrix1)):
+                    for k2 in range(len(matrix1[k1])):
+                        expected_result[k1][k2] = matrix1[k1][k2] - matrix2[k1][k2]
+
+                for k1 in range(len(matrix1)):
+                    for k2 in range(len(matrix1[k1])):
+                        self.assertAlmostEqual(res[k1][k2], expected_result[k1][k2], delta=self.delta)
+
+        logging.info("Тесты для SubWideMatr (вычитание матриц) успешно пройдены")
+        count_valid_test += 1
+        logging.info(f"Тестов успешно пройдено: {count_valid_test} / {self.count_all_test}")
+
+    def test_MultWideMatrMatr(self):
+        """Перемножение двух матриц"""
+
+        global count_valid_test
+        for i in self.m.BASE_MATRIX_NAMES:
+            matrix1 = self.m.gen(i)
+            arr_var1 = self.ffi.new('TWideMatrix', matrix1)
+
+            for j in self.m.BASE_MATRIX_NAMES:
+                matrix2 = self.m.gen(j)
+                arr_var2 = self.ffi.new('TWideMatrix', matrix2)
+                res = self.ffi.new('TWideMatrix', self.m.gen(f"matrix_{len(matrix2)}_{len(matrix2[0])}_zero"))
+
+                self.lib.MultWideMatrMatr(len(matrix1), len(matrix2[0]), len(matrix2), arr_var1, arr_var2, res)
+
+                # Создаем пустую матрицу для результата
+                expected_result = [[0 for _ in range(len(matrix2[0]))] for _ in range(len(matrix1))]
+
+                # Выполняем перемножение матриц
+                for i1 in range(len(matrix1)):
+                    for j1 in range(len(matrix2[0])):
+                        for k1 in range(len(matrix2)):
+                            expected_result[i1][j1] += matrix1[i1][k1] * matrix2[k1][j1]
+
+                for k1 in range(len(matrix1)):
+                    for k2 in range(len(matrix1[0])):
+                        self.assertAlmostEqual(res[k1][k2], expected_result[k1][k2], delta=self.delta)
+
+        logging.info("Тесты для MultWideMatrMatr (перемножение матриц) успешно пройдены")
+        count_valid_test += 1
+        logging.info(f"Тестов успешно пройдено: {count_valid_test} / {self.count_all_test}")
+
+    def test_MultWideMatrVect(self):
+        """Умножение матрицы на вектор"""
+
+        global count_valid_test
+        for i in self.m.BASE_MATRIX_NAMES:
+            matrix = self.m.gen(i)
+            arr_matr = self.ffi.new('TWideMatrix', matrix)
+
+            for j in self.m.BASE_VECTOR_NAMES:
+                vector = self.m.gen(j)
+                arr_vec = self.ffi.new('TWideVector', vector)
+                res = self.ffi.new('TWideVector', self.m.gen(f"vector_{len(vector)}_zero"))
+
+                self.lib.MultWideMatrVect(len(matrix), len(matrix[0]), arr_matr, arr_vec, res)
+
+                # Создаем пустой вектор для результата
+                expected_result = [0 for _ in range(len(matrix))]
+
+                # Выполняем умножение матрицы на вектор
+                for i1 in range(len(matrix)):
+                    for j1 in range(len(vector)):
+                        expected_result[i1] += matrix[i1][j1] * vector[j1]
+
+                for k1 in range(len(vector)):
+                    self.assertAlmostEqual(res[k1], expected_result[k1], delta=self.delta)
+
+        logging.info("Тесты для MultWideMatrVect (умножение матрицы на вектор) успешно пройдены")
+        count_valid_test += 1
+        logging.info(f"Тестов успешно пройдено: {count_valid_test} / {self.count_all_test}")
+
+    def test_MultWideMatrScal(self):
+        """Умножение матрицы на число"""
+
+        global count_valid_test
+        for i in self.m.BASE_MATRIX_NAMES:
+            matrix = self.m.gen(i)
+            arr_matr = self.ffi.new('TWideMatrix', matrix)
+            res = self.ffi.new('TWideMatrix', self.m.gen(f"matrix_{len(matrix)}_{len(matrix[0])}_zero"))
+
+            for j in [0, 1, -1, 13, 1.25]:
+                self.lib.MultWideMatrScal(len(matrix), len(matrix[0]), arr_matr, j, res)
+
+                # Создаем пустую матрицу для результата
+                expected_result = [[0 for _ in range(len(matrix[0]))] for _ in range(len(matrix))]
+
+                # Выполняем умножение матрицы на вектор
+                for i1 in range(len(matrix)):
+                    for j1 in range(len(matrix[0])):
+                        expected_result[i1][j1] = matrix[i1][j1] * j
+
+                for k1 in range(len(matrix)):
+                    for k2 in range(len(matrix[0])):
+                        self.assertAlmostEqual(res[k1][k2], expected_result[k1][k2], delta=self.delta)
+
+        logging.info("Тесты для MultWideMatrScal (умножение матрицы на число) успешно пройдены")
+        count_valid_test += 1
+        logging.info(f"Тестов успешно пройдено: {count_valid_test} / {self.count_all_test}")
+
+    def test_IdentityWide(self):
+        """Создание единичной матрицы"""
+        global count_valid_test
+        for i in self.m.BASE_MATRIX_NAMES:
+            matrix = self.m.gen(i)
+            arr_matr = self.ffi.new('TWideMatrix', matrix)
+            self.lib.IdentityWide(len(matrix), arr_matr)
+
+            expected_result = [[0 for _ in range(len(matrix[0]))] for _ in range(len(matrix))]
+
+            for i1 in range(len(expected_result)):
+                for j1 in range(len(expected_result[0])):
+                    if i1 == j1:
+                        expected_result[i1][j1] = 1
+
+            for k1 in range(len(matrix)):
+                for k2 in range(len(matrix[0])):
+                    self.assertAlmostEqual(arr_matr[k1][k2], expected_result[k1][k2], delta=self.delta)
+
+        logging.info("Тесты для IdentityWide (создание единичной матрицы) успешно пройдены")
+        count_valid_test += 1
+        logging.info(f"Тестов успешно пройдено: {count_valid_test} / {self.count_all_test}")
+
+    def test_TransposeWide(self):
+        """Транспонирование матрицы"""
+
+        global count_valid_test
+        for i in self.m.BASE_MATRIX_NAMES:
+            matrix = self.m.gen(i)
+            arr_matr = self.ffi.new('TWideMatrix', matrix)
+            res = self.ffi.new('TWideMatrix', self.m.gen(f"matrix_{len(matrix)}_{len(matrix[0])}_zero"))
+
+            self.lib.TransposeWide(len(matrix), len(matrix[0]), arr_matr, res)
+
+            expected_result = [[0 for _ in range(len(matrix[0]))] for _ in range(len(matrix))]
+
+            for i1 in range(len(expected_result)):
+                for j1 in range(len(expected_result[0])):
+                        expected_result[i1][j1] = matrix[j1][i1]
+
+            for k1 in range(len(matrix)):
+                for k2 in range(len(matrix[0])):
+                    self.assertAlmostEqual(res[k1][k2], expected_result[k1][k2], delta=self.delta)
+
+        logging.info("Тесты для TransposeWide (транспонирование матрицы) успешно пройдены")
+        count_valid_test += 1
+        logging.info(f"Тестов успешно пройдено: {count_valid_test} / {self.count_all_test}")
+
+    def test_SimilarityWide(self):
+        """Тест для Similarity Wide"""
+
 
 
 if __name__ == "__main__":

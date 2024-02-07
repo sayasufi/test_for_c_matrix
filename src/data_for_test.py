@@ -1,7 +1,6 @@
 import logging
 import random
-from typing import Optional
-
+from typing import Optional, List
 
 class MatrixVector:
     BASE_VECTOR_NAMES = (
@@ -9,20 +8,14 @@ class MatrixVector:
         "vector_8_one",
         "vector_8_-one",
         "vector_8_range",
-        "vector_8_rand",
-        "vector_1_zero",
-        "vector_4_range",
+        "vector_8_rand"
     )
     BASE_MATRIX_NAMES = (
         "matrix_8_8_zero",
         "matrix_8_8_one",
         "matrix_8_8_-one",
         "matrix_8_8_range",
-        "matrix_8_8_rand",
-        "matrix_1_1_zero",
-        "matrix_1_8_range",
-        "matrix_8_1_range",
-        "matrix_4_4_range",
+        "matrix_8_8_rand"
     )
 
     def __init__(self):
