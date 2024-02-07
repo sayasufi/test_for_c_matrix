@@ -5,7 +5,6 @@
 
 typedef double TWideVector[8];
 typedef double TWideMatrix[8][8];
-
 void  CopyWideMatr(short m, short n, TWideMatrix C_from, TWideMatrix C_to);
 double AbsWideVect     (short n, TWideVector a);
 void  AddWideVect     (short n, TWideVector a1, TWideVector a2, TWideVector a);
