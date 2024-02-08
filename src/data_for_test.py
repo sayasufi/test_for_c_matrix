@@ -1,6 +1,7 @@
 import logging
 import random
-from typing import Optional, List
+from typing import Optional
+
 
 class MatrixVector:
     BASE_VECTOR_NAMES = (
@@ -28,7 +29,7 @@ class MatrixVector:
             "-one"
         )
 
-    def gen(self, name: str) -> list[int | float] | list[list[int | float]]:
+    def gen(self, name: str) -> list[list[int | float]] | list[int | float]:
         """
         Функция генерации матрицы или вектора по имени
         :param name: matrix_8_8_one

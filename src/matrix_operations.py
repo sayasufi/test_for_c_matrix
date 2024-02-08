@@ -1,82 +1,49 @@
-def multiply_matrices(a, b):
-    temp = [[0 for _ in range(len(b[0]))] for _ in range(len(a))]
-    for i1 in range(len(a)):
-        for j1 in range(len(b[0])):
-            for k1 in range(len(b)):
-                temp[i1][j1] += a[i1][k1] * b[k1][j1]
-
-    return temp
+import numpy as np
 
 
-def transpose(matrix):
-    temp = [[0 for _ in range(len(matrix[0]))] for _ in range(len(matrix))]
-    for i1 in range(len(temp)):
-        for j1 in range(len(temp[0])):
-            temp[i1][j1] = matrix[j1][i1]
-    return temp
+def abs_vector(vector: list) -> float | int:
+    """Модуль вектора"""
+    vector_np = np.array(vector)
+    return np.linalg.norm(vector_np)
 
 
-def multiply_matrices_digit(matrix, digit):
-    # Создаем пустую матрицу для результата
-    expected_result = [[0 for _ in range(len(matrix[0]))] for _ in range(len(matrix))]
+def add_matrices(matrix1: list, matrix2: list) -> list:
+    """Сложение матриц или векторов"""
+    matrix_np1, matrix_np2 = np.array(matrix1), np.array(matrix2)
+    return (matrix_np1 + matrix_np2).tolist()
 
-    # Выполняем умножение матрицы на число
-    for i1 in range(len(matrix)):
-        for j1 in range(len(matrix[0])):
-            expected_result[i1][j1] = matrix[i1][j1] * digit
-    return expected_result
 
-def multiply_matrices_vector(matrix, vector):
-    # Создаем пустой вектор для результата
-    expected_result = [0 for _ in range(len(matrix))]
+def sub_matrices(matrix1: list, matrix2: list) -> list:
+    """Вычитание матриц или векторов"""
+    matrix_np1, matrix_np2 = np.array(matrix1), np.array(matrix2)
+    return (matrix_np1 - matrix_np2).tolist()
 
-    # Выполняем умножение матрицы на вектор
-    for i1 in range(len(matrix)):
-        for j1 in range(len(vector)):
-            expected_result[i1] += matrix[i1][j1] * vector[j1]
 
-    return expected_result
+def multiply_matrices(matrix1: list, matrix2: list) -> list:
+    """Перемножение матриц"""
+    matrix_np1, matrix_np2 = np.array(matrix1), np.array(matrix2)
+    return np.dot(matrix_np1, matrix_np2).tolist()
 
-def inverse_matrix(matrix):
-    # Размерность матрицы
-    n = len(matrix)
 
-    # Создаем единичную матрицу
-    I = [[float(i == j) for j in range(n)] for i in range(n)]
+def transpose_matrices(matrix: list) -> list:
+    """Транспонирование матрицы"""
+    matrix_np = np.array(matrix)
+    return matrix_np.transpose().tolist()
 
-    # Создаем копию матрицы A
-    A_copy = [row[:] for row in matrix]
 
-    # Приводим матрицу A к ступенчатому виду методом Гаусса
-    for i in range(n):
-        # Если элемент на главной диагонали равен 0, меняем строки местами
-        if A_copy[i][i] == 0:
-            for j in range(i + 1, n):
-                if A_copy[j][i] != 0:
-                    A_copy[i], A_copy[j] = A_copy[j], A_copy[i]
-                    I[i], I[j] = I[j], I[i]
-                    break
+def multiply_matrices_digit(matrix: list, digit: int | float) -> list:
+    """Умножение матрицы или вектора на число"""
+    matrix_np = np.array(matrix)
+    return (matrix_np * digit).tolist()
 
-        # Делим строку i на A_copy[i][i], чтобы получить 1 на главной диагонали
-        divisor = A_copy[i][i]
-        for j in range(n):
-            A_copy[i][j] /= divisor
-            I[i][j] /= divisor
 
-        # Обнуляем остальные элементы в столбце i
-        for j in range(i + 1, n):
-            multiplier = A_copy[j][i]
-            for k in range(n):
-                A_copy[j][k] -= multiplier * A_copy[i][k]
-                I[j][k] -= multiplier * I[i][k]
+def multiply_matrices_vector(matrix: list, vector: list) -> list:
+    """Умножение матрицы на вектор"""
+    matrix_np, vector_np = np.array(matrix), np.array(vector)
+    return np.dot(matrix_np, vector_np).tolist()
 
-    # Приводим матрицу A к диагональному виду
-    for i in range(n - 1, 0, -1):
-        for j in range(i - 1, -1, -1):
-            multiplier = A_copy[j][i]
-            for k in range(n):
-                A_copy[j][k] -= multiplier * A_copy[i][k]
-                I[j][k] -= multiplier * I[i][k]
 
-    return I
-
+def inverse_matrices(matrix: list) -> list:
+    """Обратная матрица"""
+    matrix_np = np.array(matrix)
+    return np.linalg.inv(matrix_np).tolist()

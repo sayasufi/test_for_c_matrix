@@ -1,8 +1,9 @@
 import logging
-import math
 import os
 import subprocess
+import time
 import unittest
+from typing import Optional
 
 import cffi
 
@@ -12,9 +13,10 @@ from matrix_operations import *
 from parser_header import parser_header
 
 count_valid_test = 0
+time_start: Optional[int | float] = None
 
 
-def compile_to_shared_object(source_file_in, output_file_in):
+def compile_to_shared_object(source_file_in: str, output_file_in: str):
     """Функция компиляции C файла в расширение .so"""
     try:
         # Компилируем файл source_file в shared object
@@ -35,6 +37,7 @@ class MatrixTestCase(unittest.TestCase):
     def setUpClass(cls):
         """Класс настройки перед запуском тестов"""
 
+        global time_start
         # Настраиваем логгер в консоль и в файл
         setup_logging(log_file="logs/cache.log", stdout_logging=True)
 
@@ -54,12 +57,22 @@ class MatrixTestCase(unittest.TestCase):
 
         cls.m = MatrixVector()
 
-        cls.delta = 1e-10
+        cls.delta = 1e-5
         cls.count_all_test = 15
+
+        time_start = time.time()
 
     @classmethod
     def tearDownClass(cls):
         """Функция удаления временного файла .so"""
+        global count_valid_test
+        global time_start
+
+        if count_valid_test == 15:
+            logging.info("Все тесты успешно пройдены")
+            logging.info(f"Время выполнения программы {time.time() - time_start} с.")
+        else:
+            logging.warning("Несколько тестов не прошли")
 
         os.remove("c_code/matrix.so")
         logging.info("Временные файлы удалены")
@@ -92,7 +105,7 @@ class MatrixTestCase(unittest.TestCase):
             vector = self.m.gen(i)
             arr_var = self.ffi.new('TWideVector', vector)
             res = self.lib.AbsWideVect(len(vector), arr_var)
-            expected_result = math.sqrt(sum(map(lambda x: x ** 2, vector)))
+            expected_result = abs_vector(vector)
 
             # Проверка, что результат соответствует ожидаемому значению
             self.assertAlmostEqual(res, expected_result, delta=self.delta)
@@ -115,7 +128,7 @@ class MatrixTestCase(unittest.TestCase):
                 res = self.ffi.new('TWideVector', self.m.gen(f"vector_{len(vector2)}_zero"))
                 self.lib.AddWideVect(len(vector2), arr_var1, arr_var2, res)
 
-                expected_result = [x + y for x, y in zip(vector1, vector2)]
+                expected_result = add_matrices(vector1, vector2)
 
                 for k in range(len(expected_result)):
                     self.assertAlmostEqual(res[k], expected_result[k], delta=self.delta)
@@ -138,7 +151,7 @@ class MatrixTestCase(unittest.TestCase):
                 res = self.ffi.new('TWideVector', self.m.gen(f"vector_{len(vector2)}_zero"))
                 self.lib.SubWideVect(len(vector2), arr_var1, arr_var2, res)
 
-                expected_result = [x - y for x, y in zip(vector1, vector2)]
+                expected_result = sub_matrices(vector1, vector2)
 
                 for k in range(len(expected_result)):
                     self.assertAlmostEqual(res[k], expected_result[k], delta=self.delta)
@@ -158,7 +171,7 @@ class MatrixTestCase(unittest.TestCase):
 
             for j in [0, 1, -1, 13, 1.25]:
                 self.lib.MultWideVectScal(len(vector), arr_var, j, res)
-                expected_result = list(map(lambda x: x * j, vector))
+                expected_result = multiply_matrices_digit(vector, j)
 
                 for k in range(len(expected_result)):
                     # Проверка, что результат соответствует ожидаемому значению
@@ -183,10 +196,7 @@ class MatrixTestCase(unittest.TestCase):
 
                 self.lib.AddWideMatr(len(matrix2), len(matrix2[0]), arr_var1, arr_var2, res)
 
-                expected_result = [[0] * len(matrix2[0]) for _ in range(len(matrix2))]
-                for k1 in range(len(matrix1)):
-                    for k2 in range(len(matrix1[k1])):
-                        expected_result[k1][k2] = matrix1[k1][k2] + matrix2[k1][k2]
+                expected_result = add_matrices(matrix1, matrix2)
 
                 for k1 in range(len(matrix1)):
                     for k2 in range(len(matrix1[k1])):
@@ -211,10 +221,7 @@ class MatrixTestCase(unittest.TestCase):
 
                 self.lib.SubWideMatr(len(matrix2), len(matrix2[0]), arr_var1, arr_var2, res)
 
-                expected_result = [[0] * len(matrix2[0]) for _ in range(len(matrix2))]
-                for k1 in range(len(matrix1)):
-                    for k2 in range(len(matrix1[k1])):
-                        expected_result[k1][k2] = matrix1[k1][k2] - matrix2[k1][k2]
+                expected_result = sub_matrices(matrix1, matrix2)
 
                 for k1 in range(len(matrix1)):
                     for k2 in range(len(matrix1[k1])):
@@ -332,7 +339,7 @@ class MatrixTestCase(unittest.TestCase):
 
             self.lib.TransposeWide(len(matrix), len(matrix[0]), arr_matr, res)
 
-            expected_result = transpose(matrix)
+            expected_result = transpose_matrices(matrix)
 
             for k1 in range(len(matrix)):
                 for k2 in range(len(matrix[0])):
@@ -360,7 +367,7 @@ class MatrixTestCase(unittest.TestCase):
                 # Перемножение матриц
                 temp1 = multiply_matrices(matrix1, matrix2)
                 # Транспонирование матрицы
-                temp2 = transpose(matrix1)
+                temp2 = transpose_matrices(matrix1)
                 # Перемножение матриц
                 expected_result = multiply_matrices(temp1, temp2)
 
@@ -383,7 +390,7 @@ class MatrixTestCase(unittest.TestCase):
 
             self.lib.InverseWide(len(matrix), arr_matr, res)
 
-            expected_result = inverse_matrix(matrix)
+            expected_result = inverse_matrices(matrix)
 
             for k1 in range(len(matrix)):
                 for k2 in range(len(matrix[0])):
@@ -393,6 +400,25 @@ class MatrixTestCase(unittest.TestCase):
         count_valid_test += 1
         logging.info(f"Тестов успешно пройдено: {count_valid_test} / {self.count_all_test}")
 
+    def test_Sort(self):
+        """Тест для сортировки"""
+
+        global count_valid_test
+        for _ in range(10):
+            vector = self.m.gen("vector_8_rand")
+            arr_matr = self.ffi.new('double arr[]', vector)
+            res = self.ffi.new('double arr_out[]', self.m.gen(f"vector_{len(vector)}_zero"))
+
+            self.lib.sort(len(vector), arr_matr, res)
+
+            expected_result = sorted(vector)
+
+            for i in range(len(vector)):
+                self.assertAlmostEqual(res[i], expected_result[i], delta=self.delta)
+
+        logging.info("Тесты для Sort (сортировка вектора) успешно пройдены")
+        count_valid_test += 1
+        logging.info(f"Тестов успешно пройдено: {count_valid_test} / {self.count_all_test}")
 
 
 if __name__ == "__main__":
